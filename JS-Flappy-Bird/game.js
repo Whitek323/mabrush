@@ -155,9 +155,15 @@ const bird = {
         this.y += this.speed;
         this.setRotation();
         this.speed += this.gravity;
+      
         if (this.y + r >= gnd.y || this.collisioned()) {
           state.curr = state.gameOver;
+        
         }
+        // if (this.y + r >= gnd.y) {
+        //   //state.curr = state.gameOver;
+        //   this.y = 50;
+        // }
 
         break;
       case state.gameOver:
