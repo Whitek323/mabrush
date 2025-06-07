@@ -4,7 +4,7 @@ class CSVRecorder {
     this.data = [];
     this.timer = null;
     this.headerGenerated = false;
-    this.elapsed = 0; // สำหรับ timestamp เริ่มต้น
+    this.elapsed = 0;
   }
 
   toggleRecording() {
@@ -12,20 +12,29 @@ class CSVRecorder {
     if (this.isRecording) {
       this.data = [];
       this.headerGenerated = false;
-      this.elapsed = 0; // reset เมื่อเริ่มใหม่
+      this.elapsed = 0;
       document.getElementById("collectBtn").textContent = "Stop Collecting";
     } else {
-      clearInterval(this.timer);
-      this.exportCSV();
-      document.getElementById("collectBtn").textContent = "Collect Data";
+      this._stopRecording();
     }
+  }
+
+  _stopRecording() {
+    clearInterval(this.timer);
+    this.isRecording = false;
+    this.exportCSV();
+    document.getElementById("collectBtn").textContent = "Collect Data";
   }
 
   startTimer(callback) {
     this.timer = setInterval(() => {
-      if (this.isRecording) {
-        callback();
-        this.elapsed += 0.25;
+      if (!this.isRecording) return;
+
+      callback();
+      this.elapsed += 0.25;
+
+      if (this.elapsed > 10.00) {
+        this._stopRecording();
       }
     }, 250);
   }
@@ -42,7 +51,7 @@ class CSVRecorder {
       this.headerGenerated = true;
     }
 
-    const timestamp = this.elapsed.toFixed(2); // ตัวเลขแบบ 0.00
+    const timestamp = this.elapsed.toFixed(2);
     const row = [timestamp];
     landmarks.forEach(lm => {
       row.push(lm.x.toFixed(6), lm.y.toFixed(6), lm.z.toFixed(6));
@@ -59,7 +68,9 @@ class CSVRecorder {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-}}
+  }
+}
+
 const recorder = new CSVRecorder();
 const collectBtn = document.getElementById("collectBtn");
 collectBtn.addEventListener("click", () => {
