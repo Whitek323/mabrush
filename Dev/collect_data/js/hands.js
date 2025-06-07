@@ -1,3 +1,4 @@
+window.lastLandmarks = null
 class CSVRecorder {
   constructor() {
     this.isRecording = false;
@@ -27,6 +28,12 @@ class CSVRecorder {
   _stopRecording() {
     clearInterval(this.timer);
     this.isRecording = false;
+
+    const timerDisplay = document.getElementById("timerDisplay");
+if (timerDisplay) {
+  timerDisplay.textContent = "Time: 0.00 s";
+}
+
     this.exportCSV();
     document.getElementById("collectBtn").textContent = "Collect Data";
   }
@@ -35,6 +42,9 @@ class CSVRecorder {
     this.timer = setInterval(() => {
       if (!this.isRecording) return;
 
+        if (timerDisplay) {
+        timerDisplay.textContent = `Time: ${this.elapsed.toFixed(2)} s`;
+      }
       callback();
       this.elapsed += 0.25;
 
@@ -88,11 +98,11 @@ const collectBtn = document.getElementById("collectBtn");
 collectBtn.addEventListener("click", () => {
   recorder.toggleRecording();
 });
-recorder.startTimer(() => {
-  if (lastLandmarks) {
-    recorder.collectLandmarks(lastLandmarks);
-  }
-});
+// recorder.startTimer(() => {
+//   if (lastLandmarks) {
+//     recorder.collectLandmarks(lastLandmarks);
+//   }
+// });
 
 const video3 = document.getElementsByClassName('input_video3')[0];
 const out3 = document.getElementsByClassName('output3')[0];
@@ -105,7 +115,7 @@ spinner.ontransitionend = () => {
   spinner.style.display = 'none';
 };
 
-let lastLandmarks = null;
+window.lastLandmarks = null;
 function onResultsHands(results) {
   document.body.classList.add('loaded');
   fpsControl.tick();
@@ -120,7 +130,7 @@ function onResultsHands(results) {
     const classification = results.multiHandedness[index];
     const isRightHand = classification.label === 'Right';
     const landmarks = results.multiHandLandmarks[index];
-    lastLandmarks = landmarks;
+    window.lastLandmarks = landmarks;
 
     drawConnectors(canvasCtx3, landmarks, HAND_CONNECTIONS, {
       color: isRightHand ? '#00FF00' : '#FF0000'
@@ -135,45 +145,7 @@ function onResultsHands(results) {
   canvasCtx3.restore();
 }
 
-function onResultsHandsdddddddd(results) {
-  document.body.classList.add('loaded');
-  fpsControl.tick();
 
-  canvasCtx3.save();
-  canvasCtx3.clearRect(0, 0, out3.width, out3.height);
-  canvasCtx3.drawImage(
-      results.image, 0, 0, out3.width, out3.height);
-  // if (results.multiHandLandmarks && results.multiHandedness) {
-  //   for (let index = 0; index < results.multiHandLandmarks.length; index++) {
-  //     const classification = results.multiHandedness[index];
-  //     const isRightHand = classification.label === 'Right';
-  //     const landmarks = results.multiHandLandmarks[index];
-  //     drawConnectors(
-  //         canvasCtx3, landmarks, HAND_CONNECTIONS,
-  //         {color: isRightHand ? '#00FF00' : '#FF0000'}),
-  //     drawLandmarks(canvasCtx3, landmarks, {
-  //       color: isRightHand ? '#00FF00' : '#FF0000',
-  //       fillColor: isRightHand ? '#FF0000' : '#00FF00',
-  //       radius: (x) => {
-  //         return lerp(x.from.z, -0.15, .1, 10, 1);
-  //       }
-  //     });
-    // }
-  // }
-   if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
-    const landmarks = results.multiHandLandmarks[0]; // First hand only
-    lastLandmarks = landmarks;
-
-    // Draw
-    drawConnectors(canvasCtx3, landmarks, HAND_CONNECTIONS, { color: '#00FF00' });
-    drawLandmarks(canvasCtx3, landmarks, {
-      color: '#FF0000',
-      fillColor: '#00FF00',
-      radius: () => 5
-    });
-  }
-  canvasCtx3.restore();
-}
 
 const hands = new Hands({locateFile: (file) => {
   return `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.1/${file}`;

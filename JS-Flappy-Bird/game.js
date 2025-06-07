@@ -133,17 +133,30 @@ const bird = {
   gravity: 0.125,
   thrust: 3.6,
   frame: 0,
+  invulnerable: 0, // เพิ่มตัวแปรสำหรับช่วงเวลาที่ไม่สามารถชนได้
   draw: function () {
     let h = this.animations[this.frame].sprite.height;
     let w = this.animations[this.frame].sprite.width;
     sctx.save();
     sctx.translate(this.x, this.y);
     sctx.rotate(this.rotatation * RAD);
+    
+    // ถ้าอยู่ในช่วง invulnerable ให้กระพริบ
+    if (this.invulnerable > 0 && Math.floor(this.invulnerable / 5) % 2 === 0) {
+      sctx.globalAlpha = 0.5;
+    }
+    
     sctx.drawImage(this.animations[this.frame].sprite, -w / 2, -h / 2);
     sctx.restore();
   },
   update: function () {
     let r = parseFloat(this.animations[0].sprite.width) / 2;
+    
+    // ลดค่า invulnerable
+    if (this.invulnerable > 0) {
+      this.invulnerable--;
+    }
+    
     switch (state.curr) {
       case state.getReady:
         this.rotatation = 0;
@@ -156,15 +169,28 @@ const bird = {
         this.setRotation();
         this.speed += this.gravity;
       
-        
-        if (this.y + r >= gnd.y || this.collisioned()) {
-          state.curr = state.gameOver;
-        
+        // ตรวจสอบการชนพื้น
+        if (this.y + r >= gnd.y) {
+          if (this.invulnerable === 0) {
+            // ลบคะแนน 1 คะแนน
+            UI.score.curr = Math.max(0, UI.score.curr - 1);
+            SFX.hit.play();
+            this.invulnerable = 60; // 3 วินาที (60 frames)
+          }
+          // รีเซ็ตตำแหน่งนก
+          this.y = 50;
+          this.speed = 0;
         }
-        // if (this.y + r >= gnd.y) {
-        //   //state.curr = state.gameOver;
-        //   this.y = 50;
-        // }
+        
+        // ตรวจสอบการชนท่อ
+        if (this.collisioned() && this.invulnerable === 0) {
+          // ลบคะแนน 1 คะแนน
+          UI.score.curr = Math.max(0, UI.score.curr - 1);
+          this.invulnerable = 60; // 3 วินาที (60 frames)
+          // รีเซ็ตตำแหน่งนก
+          this.y = 100;
+          this.speed = 0;
+        }
 
         break;
       case state.gameOver:
@@ -201,7 +227,7 @@ const bird = {
     }
   },
   collisioned: function () {
-    if (!pipe.pipes.length) return;
+    if (!pipe.pipes.length) return false;
     let bird = this.animations[0].sprite;
     let x = pipe.pipes[0].x;
     let y = pipe.pipes[0].y;
@@ -212,8 +238,7 @@ const bird = {
     if (this.x + r >= x) {
       if (this.x + r < x + w) {
         if (this.y - r <= roof || this.y + r >= floor) {
-          SFX.hit.play();
-          return true;
+          return true; // ชนท่อ
         }
       } else if (pipe.moved) {
         UI.score.curr++;
@@ -221,6 +246,7 @@ const bird = {
         pipe.moved = false;
       }
     }
+    return false;
   },
 };
 const UI = {
