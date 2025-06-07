@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bacteria Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #eef;
+      overflow: hidden;
+    }
+
+    #game {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      margin: 20px auto;
+      background: #fff;
+      border: 2px solid #000;
+      overflow: hidden;
+    }
+
+    #upper_tooth {
+      position: absolute;
+      width: 100px;
+      height: 100px;
+      bottom: 50px;
+      left: calc(50% - 50px);
+      z-index: 2;
+    }
+
+    #shield {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      bottom: 30px;
+      left: calc(50% - 70px);
+      border-radius: 50%;
+      background-color: rgba(0, 150, 255, 0.4);
+      z-index: 1;
+      display: none;
+    }
+
+    .bacteria {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+    }
+
+    #scoreboard {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 10px;
+    }
+
+    #control {
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <div id="shield"></div>
+    <img id="upper_tooth" src="upper_tooth.png" alt="Tooth" />
+  </div>
+  <div id="scoreboard">คะแนน: 0</div>
+
+  <div id="control">
+    <label>ใส่ 1 เพื่อเปิดเกราะ / 0 เพื่อปิด:</label>
+    <input type="text" id="toggleShield" maxlength="1">
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const shield = document.getElementById("shield");
+    const upperTooth = document.getElementById("upper_tooth");
+    const scoreboard = document.getElementById("scoreboard");
+    const toggleInput = document.getElementById("toggleShield");
+
+    let score = 0;
+    let shieldOn = false;
+
+    toggleInput.addEventListener("input", () => {
+      const value = toggleInput.value;
+      if (value === "1") {
+        shield.style.display = "block";
+        shieldOn = true;
+      } else if (value === "0") {
+        shield.style.display = "none";
+        shieldOn = false;
+      }
+    });
+
+    function spawnBacteria() {
+      const bacteria = document.createElement("img");
+      bacteria.src = "bacteria.png";
+      bacteria.className = "bacteria";
+      game.appendChild(bacteria);
+
+      // สุ่มทิศทางเกิด: บน ล่าง ซ้าย ขวา
+      const side = Math.floor(Math.random() * 4);
+      let x, y;
+      const gameRect = game.getBoundingClientRect();
+      const toothRect = upperTooth.getBoundingClientRect();
+
+      switch (side) {
+        case 0: // ด้านบน
+          x = Math.random() * (game.clientWidth - 50);
+          y = -50;
+          break;
+        case 1: // ด้านล่าง
+          x = Math.random() * (game.clientWidth - 50);
+          y = game.clientHeight + 50;
+          break;
+        case 2: // ซ้าย
+          x = -50;
+          y = Math.random() * (game.clientHeight - 50);
+          break;
+        case 3: // ขวา
+          x = game.clientWidth + 50;
+          y = Math.random() * (game.clientHeight - 50);
+          break;
+      }
+
+      bacteria.style.left = `${x}px`;
+      bacteria.style.top = `${y}px`;
+
+      const targetX = game.clientWidth / 2 - 25;
+      const targetY = game.clientHeight - 100;
+
+      const dx = targetX - x;
+      const dy = targetY - y;
+      const dist = Math.sqrt(dx * dx + dy * dy);
+      const speed = 2;
+
+      const vx = (dx / dist) * speed;
+      const vy = (dy / dist) * speed;
+
+      const interval = setInterval(() => {
+        x += vx;
+        y += vy;
+        bacteria.style.left = `${x}px`;
+        bacteria.style.top = `${y}px`;
+
+        const bRect = bacteria.getBoundingClientRect();
+        const sRect = shield.getBoundingClientRect();
+        const tRect = upperTooth.getBoundingClientRect();
+
+        if (shieldOn && isColliding(bRect, sRect)) {
+          score += 100;
+          scoreboard.innerText = `คะแนน: ${score}`;
+          clearInterval(interval);
+          bacteria.remove();
+        } else if (!shieldOn && isColliding(bRect, tRect)) {
+          score -= 100;
+          scoreboard.innerText = `คะแนน: ${score}`;
+          clearInterval(interval);
+          bacteria.remove();
+        }
+      }, 20);
+    }
+
+    function isColliding(rect1, rect2) {
+      return !(
+        rect1.right < rect2.left ||
+        rect1.left > rect2.right ||
+        rect1.bottom < rect2.top ||
+        rect1.top > rect2.bottom
+      );
+    }
+
+    // สร้างแบคทีเรียใหม่ทุก 1.5 วิ
+    setInterval(spawnBacteria, 1500);
+  </script>
+</body>
+</html>

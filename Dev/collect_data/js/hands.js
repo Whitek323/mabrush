@@ -1,4 +1,5 @@
 window.lastLandmarks = null
+
 class CSVRecorder {
   constructor() {
     this.isRecording = false;
@@ -6,6 +7,9 @@ class CSVRecorder {
     this.timer = null;
     this.headerGenerated = false;
     this.elapsed = 0;
+
+    this.mediaRecorder = null;
+    this.recordedBlobs = [];
   }
 
   toggleRecording() {
@@ -15,6 +19,7 @@ class CSVRecorder {
       this.headerGenerated = false;
       this.elapsed = 0;
       document.getElementById("collectBtn").textContent = "Stop Collecting";
+       this.startVideoRecording(); 
       this.startTimer(() => {
       if (window.lastLandmarks) {
         this.collectLandmarks(window.lastLandmarks);
@@ -35,9 +40,47 @@ if (timerDisplay) {
 }
 
     this.exportCSV();
+    this.stopVideoRecording();
     document.getElementById("collectBtn").textContent = "Collect Data";
   }
+  startVideoRecording() {
+    const canvas = document.querySelector(".output3");
+    const stream = canvas.captureStream(30); // 30 FPS
+    this.mediaRecorder = new MediaRecorder(stream, { mimeType: 'video/webm' });
 
+    this.mediaRecorder.ondataavailable = (event) => {
+      if (event.data && event.data.size > 0) {
+        this.recordedBlobs.push(event.data);
+      }
+    };
+
+    this.mediaRecorder.onstop = () => {
+      const blob = new Blob(this.recordedBlobs, { type: 'video/webm' });
+      const url = window.URL.createObjectURL(blob);
+
+      const filenameInput = document.getElementById("filenameInput");
+      let filename = filenameInput?.value?.trim() || "hand_landmarks";
+      filename = filename.replace(/[<>:"/\\|?*]+/g, "_");
+
+      const a = document.createElement('a');
+      a.style.display = 'none';
+      a.href = url;
+      a.download = `${filename}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      this.recordedBlobs = [];
+    };
+
+    this.mediaRecorder.start();
+  }
+
+  stopVideoRecording() {
+    if (this.mediaRecorder && this.mediaRecorder.state !== "inactive") {
+      this.mediaRecorder.stop();
+    }
+  }
   startTimer(callback) {
     this.timer = setInterval(() => {
       if (!this.isRecording) return;

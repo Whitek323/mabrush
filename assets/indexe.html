@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Bacteria Lane Game</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: sans-serif;
+      background: #eef;
+    }
+
+    #game {
+      position: relative;
+      width: 800px;
+      height: 600px;
+      margin: 20px auto;
+      background: #fff;
+      border: 2px solid #000;
+      overflow: hidden;
+    }
+
+    .lane-line {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 1px;
+      background: #ccc;
+    }
+
+    #upper_tooth {
+      position: absolute;
+      width: 60px;
+      height: 60px;
+      bottom: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 3;
+    }
+
+    #shield {
+      position: absolute;
+      width: 80px;
+      height: 80px;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0, 150, 255, 0.3);
+      border-radius: 50%;
+      z-index: 2;
+      display: none;
+    }
+
+    .bacteria {
+      position: absolute;
+      width: 50px;
+      height: 50px;
+      z-index: 1;
+    }
+
+    #scoreboard {
+      text-align: center;
+      font-size: 24px;
+      margin-top: 10px;
+    }
+
+    #control {
+      text-align: center;
+      margin-top: 10px;
+    }
+  </style>
+</head>
+<body>
+  <div id="game">
+    <!-- เส้นแบ่งช่อง -->
+    <div class="lane-line" style="left: 160px;"></div>
+    <div class="lane-line" style="left: 320px;"></div>
+    <div class="lane-line" style="left: 480px;"></div>
+    <div class="lane-line" style="left: 640px;"></div>
+
+    <div id="shield"></div>
+    <img id="upper_tooth" src="upper_tooth.png" alt="Tooth" />
+  </div>
+
+  <div id="scoreboard">คะแนน: 0</div>
+
+  <div id="control">
+    <label>ใส่ 1 เพื่อเปิดเกราะ / 0 เพื่อปิด:</label>
+    <input type="text" id="toggleShield" maxlength="1">
+  </div>
+
+  <script>
+    const game = document.getElementById("game");
+    const shield = document.getElementById("shield");
+    const upperTooth = document.getElementById("upper_tooth");
+    const scoreboard = document.getElementById("scoreboard");
+    const toggleInput = document.getElementById("toggleShield");
+
+    let score = 0;
+    let shieldOn = false;
+    let currentLane = 0;
+
+    const laneCount = 5;
+    const laneWidth = game.clientWidth / laneCount;
+    const upperToothY = game.clientHeight - 70;
+
+    // ปรับตำแหน่งฟันและเกราะให้อยู่ lane กลาง (lane 2)
+    function setLanePosition(lane) {
+      const centerX = lane * laneWidth + laneWidth / 2;
+      upperTooth.style.left = `${centerX - 30}px`;
+      shield.style.left = `${centerX - 40}px`;
+    }
+    setLanePosition(2); // เริ่มต้นที่ช่องกลาง
+
+    toggleInput.addEventListener("input", () => {
+      const value = toggleInput.value;
+      if (value === "1") {
+        shield.style.display = "block";
+        shieldOn = true;
+      } else if (value === "0") {
+        shield.style.display = "none";
+        shieldOn = false;
+      }
+    });
+
+    function spawnBacteriaInLane(lane) {
+      const bacteria = document.createElement("img");
+      bacteria.src = "bacteria.png";
+      bacteria.className = "bacteria";
+      game.appendChild(bacteria);
+
+      const startX = lane * laneWidth + (laneWidth - 50) / 2;
+      let y = -50;
+
+      bacteria.style.left = `${startX}px`;
+      bacteria.style.top = `${y}px`;
+
+      const interval = setInterval(() => {
+        y += 2;
+        bacteria.style.top = `${y}px`;
+
+        const bRect = bacteria.getBoundingClientRect();
+        const sRect = shield.getBoundingClientRect();
+        const tRect = upperTooth.getBoundingClientRect();
+
+        if (shieldOn && isColliding(bRect, sRect)) {
+          score += 100;
+          scoreboard.innerText = `คะแนน: ${score}`;
+          clearInterval(interval);
+          bacteria.remove();
+        } else if (!shieldOn && isColliding(bRect, tRect)) {
+          score -= 100;
+          scoreboard.innerText = `คะแนน: ${score}`;
+          clearInterval(interval);
+          bacteria.remove();
+        }
+
+        if (y > game.clientHeight + 50) {
+          clearInterval(interval);
+          bacteria.remove();
+        }
+      }, 20);
+    }
+
+    function isColliding(rect1, rect2) {
+      return !(
+        rect1.right < rect2.left ||
+        rect1.left > rect2.right ||
+        rect1.bottom < rect2.top ||
+        rect1.top > rect2.bottom
+      );
+    }
+
+    // สลับ lane ทุก 10 วินาที
+    setInterval(() => {
+      currentLane = (currentLane + 1) % laneCount;
+    }, 10000);
+
+    // spawn bacteria ทุก 2 วินาที ใน lane ปัจจุบัน
+    setInterval(() => {
+      spawnBacteriaInLane(currentLane);
+    }, 2000);
+  </script>
+</body>
+</html>
