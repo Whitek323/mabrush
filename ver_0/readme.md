@@ -1,0 +1,1 @@
+run ./hands.html

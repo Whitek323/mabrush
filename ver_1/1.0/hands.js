@@ -141,11 +141,7 @@ const collectBtn = document.getElementById("collectBtn");
 collectBtn.addEventListener("click", () => {
   recorder.toggleRecording();
 });
-// recorder.startTimer(() => {
-//   if (lastLandmarks) {
-//     recorder.collectLandmarks(lastLandmarks);
-//   }
-// });
+
 
 const video3 = document.getElementsByClassName('input_video3')[0];
 const out3 = document.getElementsByClassName('output3')[0];
