@@ -91,7 +91,7 @@ if (timerDisplay) {
       callback();
       this.elapsed += 0.25;
 
-      if (this.elapsed > 10.00) {
+      if (this.elapsed > 15.00) {
         this._stopRecording();
       }
     }, 250);
