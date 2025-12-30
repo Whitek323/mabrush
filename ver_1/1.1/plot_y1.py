@@ -12,12 +12,12 @@ plt.rcParams['font.family'] = font_manager.FontProperties(
 ).get_name()
 
 mapping = {
-    "ซ้าย บน": "./data/2.1-1.csv",
-    "ซ้าย ล่าง": "./data/2.1-2.csv",
-    "กลาง บน": "./data/2.2-1.csv",
-    "กลาง ล่าง": "./data/2.2-2.csv",
-    "ขวา บน": "./data/2.3-1.csv",
-    "ขวา ล่าง": "./data/2.3-2.csv"
+    "ซ้าย บน": "./data/3.1-1.csv",
+    "ซ้าย ล่าง": "./data/3.1-2.csv",
+    "กลาง บน": "./data/3.2-1.csv",
+    "กลาง ล่าง": "./data/3.2-2.csv",
+    "ขวา บน": "./data/3.3-1.csv",
+    "ขวา ล่าง": "./data/3.3-2.csv"
 }
 
 positions = [

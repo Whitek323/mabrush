@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>4 Views: Normal | Edge | Hands | Brush Tip</title>
+
+<style>
+  body {
+    background: #111;
+    color: #fff;
+    font-family: sans-serif;
+    margin: 0;
+    padding: 10px;
+  }
+  .row {
+    display: flex;
+    gap: 10px;
+  }
+  canvas {
+    width: 320px;
+    height: 240px;
+    border: 1px solid #555;
+  }
+</style>
+</head>
+<body>
+
+<h3>Normal | Edge | MediaPipe Hands | Toothbrush Tip</h3>
+
+<div class="row">
+  <canvas id="normal"></canvas>
+  <canvas id="edges"></canvas>
+  <canvas id="hands"></canvas>
+  <canvas id="tip"></canvas>
+</div>
+
+<!-- hidden video -->
+<video id="video" autoplay playsinline style="display:none;"></video>
+
+<!-- OpenCV -->
+<script src="https://docs.opencv.org/4.x/opencv.js"></script>
+
+<!-- MediaPipe -->
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.1/hands.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js"></script>
+
+<script>
+const W = 320, H = 240;
+
+/* =========================
+   CAMERA
+========================= */
+const video = document.getElementById("video");
+navigator.mediaDevices.getUserMedia({ video: true })
+.then(stream => video.srcObject = stream);
+
+/* =========================
+   CANVAS
+========================= */
+const cNormal = document.getElementById("normal");
+const cEdge   = document.getElementById("edges");
+const cHands  = document.getElementById("hands");
+const cTip    = document.getElementById("tip");
+
+[cNormal, cEdge, cHands, cTip].forEach(c => {
+  c.width = W; c.height = H;
+});
+
+const ctxNormal = cNormal.getContext("2d");
+const ctxHands  = cHands.getContext("2d");
+const ctxTip    = cTip.getContext("2d");
+
+/* =========================
+   MEDIAPIPE HANDS
+========================= */
+let currentHand = null;
+
+const hands = new Hands({
+  locateFile: f => `https://cdn.jsdelivr.net/npm/@mediapipe/hands@0.1/${f}`
+});
+
+hands.setOptions({
+  maxNumHands: 1,
+  minDetectionConfidence: 0.5,
+  minTrackingConfidence: 0.5
+});
+
+hands.onResults(res => {
+  ctxHands.clearRect(0,0,W,H);
+  ctxHands.drawImage(res.image, 0,0,W,H);
+
+  if (res.multiHandLandmarks) {
+    currentHand = res.multiHandLandmarks[0];
+    drawConnectors(ctxHands, currentHand, HAND_CONNECTIONS, {color:'#00FF00'});
+    drawLandmarks(ctxHands, currentHand, {color:'#FF0000'});
+  } else {
+    currentHand = null;
+  }
+});
+
+const cam = new Camera(video, {
+  onFrame: async () => await hands.send({image: video}),
+  width: W,
+  height: H
+});
+cam.start();
+
+/* =========================
+   HELPER FUNCTIONS
+========================= */
+function pointToLineDistance(px, py, x1, y1, x2, y2) {
+  const A = px - x1;
+  const B = py - y1;
+  const C = x2 - x1;
+  const D = y2 - y1;
+
+  const dot = A * C + B * D;
+  const lenSq = C * C + D * D;
+  const t = dot / lenSq;
+
+  const xx = x1 + t * C;
+  const yy = y1 + t * D;
+
+  return Math.hypot(px - xx, py - yy);
+}
+
+/* =========================
+   OPENCV + TIP DETECTION
+========================= */
+function startOpenCV() {
+  function loop() {
+    if (video.readyState === 4) {
+
+      /* --- NORMAL --- */
+      ctxNormal.drawImage(video, 0, 0, W, H);
+
+      /* --- EDGE --- */
+      let src = cv.imread(cNormal);
+      let gray = new cv.Mat();
+      let edge = new cv.Mat();
+      cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+      cv.Canny(gray, edge, 100, 200);
+      cv.imshow("edges", edge);
+
+      /* --- CONTOURS --- */
+      let contours = new cv.MatVector();
+      let hierarchy = new cv.Mat();
+      cv.findContours(
+        edge, contours, hierarchy,
+        cv.RETR_EXTERNAL, cv.CHAIN_APPROX_SIMPLE
+      );
+
+      /* --- TIP CANVAS --- */
+      ctxTip.clearRect(0, 0, W, H);
+      ctxTip.drawImage(video, 0, 0, W, H);
+
+      /* =========================
+         NEW TIP DETECTION
+         Line from landmark 5 → 17
+      ========================= */
+      if (currentHand && contours.size() > 0) {
+
+        const p5  = currentHand[18];   // base of brush
+        const p17 = currentHand[6];  // direction
+
+        const x1 = p5.x * W;
+        const y1 = p5.y * H;
+
+        const dx = (p17.x - p5.x);
+        const dy = (p17.y - p5.y);
+
+        // extend ray
+        const scale = 1000;
+        const x2 = x1 + dx * scale;
+        const y2 = y1 + dy * scale;
+
+        /* --- draw direction line (RED) --- */
+        ctxTip.strokeStyle = "red";
+        ctxTip.lineWidth = 2;
+        ctxTip.beginPath();
+        ctxTip.moveTo(x1, y1);
+        ctxTip.lineTo(x2, y2);
+        ctxTip.stroke();
+
+        /* --- find intersection with contour --- */
+        let tip = null;
+        let maxDist = 0;
+
+        for (let i = 0; i < contours.size(); i++) {
+          const cnt = contours.get(i);
+          const data = cnt.data32S;
+
+          for (let j = 0; j < data.length; j += 2) {
+            const cx = data[j];
+            const cy = data[j+1];
+
+            const distToLine = pointToLineDistance(
+              cx, cy, x1, y1, x2, y2
+            );
+
+            // tolerance for "on the line"
+            if (distToLine < 4) {
+              const dFromBase = Math.hypot(cx - x1, cy - y1);
+              if (dFromBase > maxDist) {
+                maxDist = dFromBase;
+                tip = { x: cx, y: cy };
+              }
+            }
+          }
+        }
+
+        /* --- draw tip point --- */
+        if (tip) {
+          ctxTip.beginPath();
+          ctxTip.arc(tip.x, tip.y, 6, 0, Math.PI * 2);
+          ctxTip.fillStyle = "red";
+          ctxTip.fill();
+        }
+      }
+
+      /* --- CLEAN --- */
+      src.delete(); gray.delete(); edge.delete();
+      contours.delete(); hierarchy.delete();
+    }
+
+    requestAnimationFrame(loop);
+  }
+  loop();
+}
+
+cv.onRuntimeInitialized = startOpenCV;
+</script>
+
+
+</body>
+</html>
